@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "sysinfo.h"
 
 struct cpu cpus[NCPU];
 
@@ -695,4 +696,47 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+//计算空闲进程数量的函数
+uint64 nproc(void)
+{
+  struct proc *p;
+  uint64 nproc = 0;
+
+  for(p = proc; p < &proc[NPROC]; p++) {
+    if(p->state == UNUSED) {
+      ++nproc;
+    }
+  }
+  return nproc;
+}
+
+//计算可用文件描述符数量的函数
+uint64 freefd(void)
+{
+  struct proc *p = myproc();
+  uint64 freefd = 0;
+
+  for(int fd = 0; fd < NOFILE; fd++){
+    if(!(p->ofile[fd])){
+      ++freefd;
+    }
+  }
+  return freefd;
+}
+
+int
+systeminfo(uint64 addr)
+{
+  struct sysinfo sinfo;
+  struct proc *p = myproc();
+
+  sinfo.freefd = freefd();
+  sinfo.freemem = freemem();
+  sinfo.nproc = nproc();
+
+  if(copyout(p->pagetable, addr, (char *)&sinfo, sizeof(sinfo)) < 0)
+    return -1;
+  return 0;
 }
