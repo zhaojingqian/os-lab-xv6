@@ -92,7 +92,6 @@ void *
 kalloc(void)
 {
   struct run *r;
-  struct run *other_r;
 
   // acquire(&kmem.lock);
   // r = kmem.freelist;
@@ -106,23 +105,26 @@ kalloc(void)
 
   acquire(&(kmems[myid].lock));
   r = kmems[myid].freelist;
-  if(r) 
+  if(r) {
     kmems[myid].freelist = r->next;
+    release(&(kmems[myid].lock));
+    memset((char*)r, 5, PGSIZE);
+    return (void*)r;
+  }
   else {
+    release(&(kmems[myid].lock));
     for(int i=0; i<NCPU; i++) {
       if(myid == i) continue;
-      other_r = kmems[i].freelist;
-      if(other_r) {
-        acquire(&(kmems[i].lock));
-        kmems[i].freelist = other_r->next;
-        r = other_r;
+      acquire(&(kmems[i].lock));
+      r = kmems[i].freelist;
+      if(r) {
+        kmems[i].freelist = r->next;
         release(&(kmems[i].lock));
-        break;
+        memset((char*)r, 5, PGSIZE);
+        return (void*)r;
       }
+      release(&(kmems[i].lock));
     }
   }
-  release(&(kmems[myid].lock));
-  if(r)
-    memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
