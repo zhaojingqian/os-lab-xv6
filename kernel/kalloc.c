@@ -38,8 +38,8 @@ kinit()
     // char name[7] = "kmem";
     // name[5] +=  i
     initlock(&(kmems[i].lock), "kmem");
-    freerange(end, (void*)PHYSTOP);
   }
+  freerange(end, (void*)PHYSTOP);
 }
 
 void
@@ -106,21 +106,22 @@ kalloc(void)
 
   acquire(&(kmems[myid].lock));
   r = kmems[myid].freelist;
-  if(r)
+  if(r) 
     kmems[myid].freelist = r->next;
   else {
     for(int i=0; i<NCPU; i++) {
+      if(myid == i) continue;
       other_r = kmems[i].freelist;
       if(other_r) {
         acquire(&(kmems[i].lock));
         kmems[i].freelist = other_r->next;
         r = other_r;
         release(&(kmems[i].lock));
+        break;
       }
     }
   }
   release(&(kmems[myid].lock));
-
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
