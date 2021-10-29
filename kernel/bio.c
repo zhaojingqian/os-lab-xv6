@@ -23,7 +23,7 @@
 #include "fs.h"
 #include "buf.h"
 
-#define NBUCKETS 13
+#define NBUCKETS 17
 struct {
   // struct spinlock lock;
   // struct buf buf[NBUF];
@@ -49,8 +49,8 @@ binit(void)
     bcache.hashbucket[i].next = &bcache.hashbucket[i];
   }
   for(b = bcache.buf; b < bcache.buf+NBUF; b++) {
-    int num = b - bcache.buf;
-    int id = num % NBUCKETS;
+    // int num = b - bcache.buf;
+    int id = (b-bcache.buf) % NBUCKETS;
     // acquire(&(bcache.lock[id]));
     b->index = id;
     b->next = bcache.hashbucket[id].next;
@@ -123,23 +123,24 @@ bget(uint dev, uint blockno)
       //   return b;
       // }
       if(b->refcnt == 0) {
+
+        //remove from hash list(i) to hash list(id)
+        //remove
+        b->prev->next = b->next;
+        b->next->prev = b->prev;
+        //add
+        acquire(&(bcache.lock[id]));
         b->dev = dev;
         b->blockno = blockno;
         b->valid = 0;
         b->refcnt = 1;
         b->index = id;
-        //remove from hash list(i) to hash list(id)
-        //remove
-        b->prev->next = b->next;
-        b->next->prev = b->prev;
-        release(&(bcache.lock[i])); //operate finish, unlock this hashlist
-        //add
-        acquire(&(bcache.lock[id]));
         b->next = bcache.hashbucket[id].next;
         b->prev = &bcache.hashbucket[id];
         bcache.hashbucket[id].next->prev = b;
         bcache.hashbucket[id].next = b;
         release(&(bcache.lock[id]));
+        release(&(bcache.lock[i])); //operate finish, unlock this hashlist
         acquiresleep(&b->lock);
         return b;
       }
@@ -208,7 +209,6 @@ brelse(struct buf *b)
 
   releasesleep(&b->lock);
 
-  //have a problem (refcnt = 0 brelse)
   int id = b->index;
   acquire(&(bcache.lock[id]));
   (b->refcnt)--;
