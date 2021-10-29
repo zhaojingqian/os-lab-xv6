@@ -23,7 +23,7 @@
 #include "fs.h"
 #include "buf.h"
 
-#define NBUCKETS 17
+#define NBUCKETS 13
 struct {
   // struct spinlock lock;
   // struct buf buf[NBUF];
