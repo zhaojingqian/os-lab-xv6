@@ -2827,9 +2827,7 @@ main(int argc, char *argv[])
   int free0 = countfree();
   int free1 = 0;
   int fail = 0;
-  // printf("~~~\n");
   for (struct test *t = tests; t->s != 0; t++) {
-    // printf("***\n");
     if((justone == 0) || strcmp(t->s, justone) == 0) {
       if(!run(t->f, t->s))
         fail = 1;
