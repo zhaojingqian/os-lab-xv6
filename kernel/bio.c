@@ -51,14 +51,13 @@ binit(void)
   for(b = bcache.buf; b < bcache.buf+NBUF; b++) {
     // int num = b - bcache.buf;
     int id = (b-bcache.buf) % NBUCKETS;
-    // acquire(&(bcache.lock[id]));
+    // printf("%d\n", b-bcache.buf);
     b->index = id;
     b->next = bcache.hashbucket[id].next;
     b->prev = &bcache.hashbucket[id];
     initsleeplock(&b->lock, "buffer");
     bcache.hashbucket[id].next->prev = b;
     bcache.hashbucket[id].next = b;
-    // release(&(bcache.lock[id]));
   }
 
 
