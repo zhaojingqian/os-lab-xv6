@@ -83,12 +83,12 @@ bget(uint dev, uint blockno)
 {
   struct buf *b;
 
-  uint id = blockno % NBUCKETS;
+  int id = blockno % NBUCKETS;
   // printf("id=%d\n", id);
   acquire(&(bcache.lock[id]));
   for(b=bcache.hashbucket[id].next; b!=&bcache.hashbucket[id]; b=b->next) {
     if(b->dev==dev && b->blockno==blockno) {
-      ++(b->refcnt);
+      (b->refcnt)++;
       release(&(bcache.lock[id]));
       acquiresleep(&b->lock);
       return b;
