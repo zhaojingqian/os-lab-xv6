@@ -39,7 +39,7 @@ procinit(void)
         panic("kalloc");
       uint64 va = KSTACK((int) (p - proc));
       kvmmap(va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
-      p->kstack = va;
+      p->pa = pa;
   }
   kvminithart();
 }
@@ -113,6 +113,18 @@ found:
     return 0;
   }
 
+  //* change---------------------------------
+  if((p->k_pagetable = (pagetable_t)kalloc()) == 0) {
+    release((&p->lock));
+    return 0;
+  }
+  memset(p->k_pagetable, 0, PGSIZE);
+  ukvminit(p->k_pagetable);
+  uint64 va = KSTACK((int) (p - proc));
+  ukvmmap(p->k_pagetable, va, (uint64)p->pa, PGSIZE, PTE_R | PTE_W);
+  p->kstack = va;
+
+  //* ---------------------------------------
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -141,7 +153,10 @@ freeproc(struct proc *p)
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
+  if(p->k_pagetable)
+    proc_freekpagetable(p->k_pagetable);
   p->pagetable = 0;
+  p->k_pagetable = 0;
   p->sz = 0;
   p->pid = 0;
   p->parent = 0;
@@ -193,6 +208,20 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
   uvmfree(pagetable, sz);
+}
+
+void
+proc_freekpagetable(pagetable_t k_pagetable)
+{
+  for(int i=0; i<512; i++) {
+    pte_t pte = k_pagetable[i];
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0) {
+      uint64 child = PTE2PA(pte);
+      proc_freekpagetable((pagetable_t)child);
+      k_pagetable[i] = 0;
+    }
+  }
+  kfree((void*)k_pagetable);
 }
 
 // a user program that calls exec("/init")
@@ -473,12 +502,14 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
+        ukvminithart(p->k_pagetable);
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
+        kvminithart();
         c->proc = 0; // cpu dosen't run any process now
-
+        
         found = 1;
       }
       release(&p->lock);

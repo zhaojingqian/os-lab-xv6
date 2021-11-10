@@ -47,12 +47,30 @@ kvminit()
   kvmmap(TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
 }
 
+void
+ukvminit(pagetable_t k_pagetable)
+{
+  ukvmmap(k_pagetable, UART0, UART0, PGSIZE, PTE_R | PTE_W);
+  ukvmmap(k_pagetable, VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
+  ukvmmap(k_pagetable, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
+  ukvmmap(k_pagetable, KERNBASE, KERNBASE, (uint64)etext-KERNBASE, PTE_R | PTE_X);
+  ukvmmap(k_pagetable, (uint64)etext, (uint64)etext, PHYSTOP-(uint64)etext, PTE_R | PTE_W);
+  ukvmmap(k_pagetable, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
+}
+
 // Switch h/w page table register to the kernel's page table,
 // and enable paging.
 void
 kvminithart()
 {
   w_satp(MAKE_SATP(kernel_pagetable));
+  sfence_vma();
+}
+
+void
+ukvminithart(pagetable_t k_pagetable)
+{
+  w_satp(MAKE_SATP(k_pagetable));
   sfence_vma();
 }
 
@@ -73,7 +91,7 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
 {
   if(va >= MAXVA)
     panic("walk");
-
+    
   for(int level = 2; level > 0; level--) {
     pte_t *pte = &pagetable[PX(level, va)];
     if(*pte & PTE_V) {
@@ -99,7 +117,7 @@ walkaddr(pagetable_t pagetable, uint64 va)
 
   if(va >= MAXVA)
     return 0;
-
+  //* 获得其PTE地址
   pte = walk(pagetable, va, 0);
   if(pte == 0)
     return 0;
@@ -107,7 +125,7 @@ walkaddr(pagetable_t pagetable, uint64 va)
     return 0;
   if((*pte & PTE_U) == 0)
     return 0;
-  pa = PTE2PA(*pte);
+  pa = PTE2PA(*pte);  //* 转化到物理地址
   return pa;
 }
 
@@ -119,6 +137,13 @@ kvmmap(uint64 va, uint64 pa, uint64 sz, int perm)
 {
   if(mappages(kernel_pagetable, va, sz, pa, perm) != 0)
     panic("kvmmap");
+}
+
+void
+ukvmmap(pagetable_t k_pagetable, uint64 va, uint64 pa, uint64 sz, int perm)
+{
+  if(mappages(k_pagetable, va, sz, pa, perm) != 0)
+    panic("user_kvmap");
 }
 
 // translate a kernel virtual address to
