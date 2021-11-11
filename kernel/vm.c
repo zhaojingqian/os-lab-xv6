@@ -512,9 +512,10 @@ kumap(pagetable_t u_pagetable, pagetable_t k_pagetable, uint64 begin, uint64 end
 {
   pte_t *u_pte;
   pte_t *k_pte;
-  uint64 i;
+
   begin = PGROUNDUP(begin);
-  for(i=begin; i<end; i+=PGSIZE) {
+  
+  for(uint64 i=begin; i<end; i+=PGSIZE) {
     if((u_pte = walk(u_pagetable, i, 0)) == 0)
       panic("kumap: u_pte should exist");
     if((k_pte = walk(k_pagetable, i, 1)) == 0)
@@ -523,3 +524,5 @@ kumap(pagetable_t u_pagetable, pagetable_t k_pagetable, uint64 begin, uint64 end
   }
   return 0;
 }
+
+
