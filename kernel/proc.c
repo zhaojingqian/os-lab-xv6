@@ -250,6 +250,8 @@ userinit(void)
   uvminit(p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
 
+  kumap(p->pagetable, p->k_pagetable, 0, p->sz);
+
   // prepare for the very first "return" from kernel to user.
   p->trapframe->epc = 0;      // user program counter
   p->trapframe->sp = PGSIZE;  // user stack pointer
@@ -279,6 +281,9 @@ growproc(int n)
     sz = uvmdealloc(p->pagetable, sz, sz + n);
   }
   p->sz = sz;
+
+  kumap(p->pagetable, p->k_pagetable, sz-n, sz);
+
   return 0;
 }
 
@@ -303,6 +308,8 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+
+  kumap(np->pagetable, np->k_pagetable, 0, np->sz);
 
   np->parent = p;
 

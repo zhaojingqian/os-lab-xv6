@@ -70,6 +70,11 @@ exec(char *path, char **argv)
   uint64 sz1;
   if((sz1 = uvmalloc(pagetable, sz, sz + 2*PGSIZE)) == 0)
     goto bad;
+
+  if(sz1 > PLIC)
+    goto bad;
+
+
   sz = sz1;
   uvmclear(pagetable, sz-2*PGSIZE);
   sp = sz;
@@ -112,6 +117,9 @@ exec(char *path, char **argv)
   oldpagetable = p->pagetable;
   p->pagetable = pagetable;
   p->sz = sz;
+
+  kumap(p->pagetable, p->k_pagetable, 0, p->sz);
+
   p->trapframe->epc = elf.entry;  // initial program counter = main
   p->trapframe->sp = sp; // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
