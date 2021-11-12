@@ -39,6 +39,7 @@ procinit(void)
         panic("kalloc");
       uint64 va = KSTACK((int) (p - proc));
       kvmmap(va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
+      p->kstack = va;
       p->pa = pa;
   }
   kvminithart();
@@ -122,7 +123,6 @@ found:
   ukvminit(p->k_pagetable);
   uint64 va = KSTACK((int) (p - proc));
   ukvmmap(p->k_pagetable, va, (uint64)p->pa, PGSIZE, PTE_R | PTE_W);
-  p->kstack = va;
 
   //* ---------------------------------------
   // An empty user page table.

@@ -524,5 +524,3 @@ kumap(pagetable_t u_pagetable, pagetable_t k_pagetable, uint64 begin, uint64 end
   }
   return 0;
 }
-
-
