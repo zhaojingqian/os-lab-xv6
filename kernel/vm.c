@@ -502,7 +502,7 @@ vmprint(pagetable_t pgtbl)
             }
           }
         }
-      }      
+      }
     }
   }
 }
